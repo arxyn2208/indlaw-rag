@@ -30,6 +30,22 @@ Gold file: a JSON list. Use `{"question": "...", "relevant": ["file.txt"]}` for 
 
 The corpus is not part of this repository. Judgment texts have their own terms of use, so put your own files in `corpus/`, which is git-ignored.
 
+## Install on a Mac (Apple silicon, 8 GB is enough for the API route)
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[app]"          # core has no dependencies; the app extra adds Streamlit
+mkdir corpus                      # put your own judgments here as .txt files
+python -m indlaw build corpus/    # writes index.json (git-ignored)
+export INDLAW_CORPUS=corpus
+export INDLAW_LLM_URL=https://generativelanguage.googleapis.com/v1beta/openai
+export INDLAW_LLM_MODEL=gemini-flash-lite-latest
+export INDLAW_LLM_KEY=...        # your own key, typed into your shell. Never commit it.
+streamlit run app.py
+```
+
+Without the three INDLAW_LLM variables the app runs in quotes-only mode and says so. Model names change: check which models your key can use before relying on one. Transient 429 and 5xx replies are retried; if they persist the app shows an error and no answer.
+
 ## Tests
 
 ```bash
