@@ -21,7 +21,9 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 
-from .answer import MIN_COVERAGE, coverage
+from .answer import coverage
+
+RAG_MIN_COVERAGE = 0.4  # looser: quote verification is a second filter
 from .index import Index
 from .text import Chunk, tokens
 
@@ -190,7 +192,7 @@ def parse_statements(text: str, sources: list[Chunk]) -> list[Statement]:
 
 
 def answer_rag(index: Index, question: str, generator, k: int = 4,
-               min_coverage: float = MIN_COVERAGE) -> RagAnswer:
+               min_coverage: float = RAG_MIN_COVERAGE) -> RagAnswer:
     hits = [c for c, _ in index.search(question, k=k)]
     terms = set(tokens(question))
     if not hits or max(coverage(terms, c) for c in hits) < min_coverage:

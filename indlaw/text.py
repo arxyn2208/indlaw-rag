@@ -13,9 +13,30 @@ _WORD = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
 _PARA = re.compile(r"^\s*(\d{1,3})\s*[.)]\s+(?=\S)", re.MULTILINE)
 
 
+_SUFFIXES = ("ations", "ation", "ings", "ing", "ions", "ion", "ed", "es", "s")
+
+
+def stem(word: str) -> str:
+    """Conservative suffix stripper (no prefix truncation).
+
+    Removes one common ending if at least 4 letters remain, then a trailing "e".
+    "accused", "accuses" -> "accus"; "accusation" -> "accus"; "detained", "detaining" -> "detain".
+    It does NOT link "detain" with "detention" (irregular stem change); that needs a lemmatizer.
+    """
+    if word.endswith("ss"):
+        return word
+    for suf in _SUFFIXES:
+        if word.endswith(suf) and len(word) - len(suf) >= 4:
+            word = word[: -len(suf)]
+            break
+    if len(word) > 4 and word.endswith("e"):
+        word = word[:-1]
+    return word
+
+
 def tokens(text: str, keep_stopwords: bool = False) -> list[str]:
     found = _WORD.findall(text.lower())
-    return found if keep_stopwords else [w for w in found if w not in STOPWORDS]
+    return found if keep_stopwords else [stem(w) for w in found if w not in STOPWORDS]
 
 
 @dataclass(frozen=True)

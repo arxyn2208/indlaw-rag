@@ -29,7 +29,7 @@ def folder(tmp_path):
 
 
 def test_tokens_drop_stopwords():
-    assert tokens("The right of the accused") == ["right", "accused"]
+    assert tokens("The right of the accused") == ["right", "accus"]
 
 
 def test_split_on_numbered_paragraphs():
@@ -230,3 +230,17 @@ def test_chat_endpoint_retries_then_fails_cleanly(monkeypatch):
     monkeypatch.setattr(urllib.request, "urlopen", always_503)
     with pytest.raises(GenerationError):
         ChatEndpoint("http://x/v1", "m", "k", retries=1, backoff=0).complete("hi")
+
+
+def test_stemming_matches_inflections():
+    assert tokens("accused") == tokens("accuse") == tokens("accusation") == tokens("accuses")
+    assert tokens("detained") == tokens("detaining") == tokens("detain")
+    assert tokens("prisoners") == tokens("prisoner")
+
+
+def test_stemming_does_not_overmerge_or_claim_irregulars():
+    assert tokens("detain") != tokens("detention")  # known limit, not matched
+    assert tokens("prison") != tokens("prisoner")  # derivational, not merged
+    assert tokens("bail") != tokens("bale")
+    assert tokens("court") != tokens("count")
+    assert tokens("judge") != tokens("judgment")
