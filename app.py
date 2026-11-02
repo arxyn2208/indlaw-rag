@@ -31,14 +31,16 @@ def usage_guard() -> UsageGuard:
 
 
 folder = os.getenv("INDLAW_CORPUS", "corpus")
+if not os.path.isdir(folder) and os.path.basename(os.path.normpath(folder)) == "sc_2019_sample" and os.path.isdir("sc_sample"):
+    folder = "sc_sample"  # the sample was renamed; keep older INDLAW_CORPUS settings working
 if not os.path.isdir(folder):
     st.error(f"Corpus folder '{folder}' not found. Put .txt judgments there, or set INDLAW_CORPUS.")
     st.stop()
 
 index = load(folder)
-if os.path.basename(os.path.normpath(folder)) == "sc_2019_sample":
-    st.warning("Prototype on six real Supreme Court of India judgments (2019, CC-BY-4.0, Dattam Labs via AWS Open Data, "
-               "see sc_2019_sample/SOURCE.md). Text came from PDFs and may contain extraction errors. Paragraph labels "
+if os.path.basename(os.path.normpath(folder)).startswith("sc_"):
+    st.warning("Prototype on real Supreme Court of India judgments (2016-2022, CC-BY-4.0, Dattam Labs via AWS Open Data, "
+               "see sc_sample/SOURCE.md). Text came from PDFs and may contain extraction errors. Paragraph labels "
                "come from this tool's splitter, not the court. Answers can miss the question and are not legal advice.")
 if os.path.basename(os.path.normpath(folder)) == "sample_corpus":
     st.warning("Prototype. The three cases loaded here are FICTIONAL, written for this demo. Nothing below is a "
@@ -62,13 +64,21 @@ def provision_map_tab() -> None:
         st.info("No Article or Section mentions found in this corpus.")
         return
     counts = Counter(e.provision for e in edges)
-    chosen = st.multiselect("Provisions", [p for p, _ in counts.most_common()], default=[p for p, _ in counts.most_common(4)])
+    chosen = st.multiselect("Provisions", [p for p, _ in counts.most_common()], default=[p for p, _ in counts.most_common() if "not named" not in p][:12])
     titles = sorted({e.title for e in edges})
     case = st.selectbox("Case", ["All cases"] + titles)
     shown = [e for e in edges if e.provision in chosen and (case == "All cases" or e.title == case)]
     st.write(f"{len(shown)} mentions in {len({e.doc_id for e in shown})} cases")
     if shown:
-        st.graphviz_chart(to_dot(shown, top=len(chosen) or None))
+        if st.checkbox("Interactive graph (drag, zoom, pan)", value=True):
+            import streamlit.components.v1 as components
+
+            from indlaw.kmap import to_vis_html
+            components.html(to_vis_html(shown), height=640)
+            st.caption("Boxes are cases and ovals are provisions. An edge exists only where a paragraph mentions the provision; "
+                       "hover an edge for the paragraph count.")
+        else:
+            st.graphviz_chart(to_dot(shown, top=len(chosen) or None))
         st.dataframe([{"Case": e.title, "Paragraph": e.label, "Provision": e.provision, "Sentence": e.evidence}
                       for e in shown])
 

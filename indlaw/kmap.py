@@ -38,8 +38,12 @@ def find_provisions(text: str) -> list[tuple[str, str]]:
             for num in NUMBER.findall(m.group(1)):
                 found.append((f"Article {num}", sent.strip()))
         for m in SECTION.finditer(sent):
-            act = (m.group(2) or m.group(3) or "").strip().rstrip(",")
-            found.append((f"Section {m.group(1)}, {act}", sent.strip()))
+            act = re.sub(r"\s+", " ", (m.group(2) or m.group(3) or "")).strip().rstrip(",")
+            if act in ("Act", "Code"):
+                # "the Act" alone does not say which Act: keep it separate from named Acts
+                found.append((f"Section {m.group(1)} (Act not named in the sentence)", sent.strip()))
+            else:
+                found.append((f"Section {m.group(1)}, {act}", sent.strip()))
     return found
 
 
@@ -48,6 +52,9 @@ def build_map(chunks: list[Chunk]) -> list[Edge]:
     edges: list[Edge] = []
     for c in chunks:
         for prov, sent in find_provisions(c.text):
+            if prov.endswith("(Act not named in the sentence)"):
+                # "the Act" differs from case to case, so it must not link two cases
+                prov = f"{prov} - {c.doc_id.removesuffix('.txt')}"
             key = (c.doc_id, c.label, prov)
             if key not in seen:
                 seen.add(key)
@@ -81,3 +88,34 @@ def to_dot(edges: list[Edge], top: int | None = None) -> str:
         lines.append(f"  {q('c:' + doc)} -> {q('p:' + prov)} [label={q(text)}, fontsize=10];")
     lines.append("}")
     return "\n".join(lines)
+
+
+VIS_URL = "https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"
+
+
+def to_vis_html(edges: list[Edge], height: int = 620) -> str:
+    """A self-contained interactive page (vis-network from a CDN): drag, zoom and pan.
+
+    vis-network 9.1.9 is pinned (Apache-2.0 OR MIT). One node per case and per provision, one edge per case-provision pair. Hovering an edge shows how many
+    paragraphs mention it. Nodes and edges come only from the literal mentions in ``edges``.
+    """
+    import json
+
+    cases: dict[str, str] = {}
+    pairs: dict[tuple[str, str], list[str]] = {}
+    for e in edges:
+        cases[e.doc_id] = e.title
+        pairs.setdefault((e.doc_id, e.provision), []).append(e.label)
+    provs = sorted({p for _, p in pairs})
+    nodes = [{"id": "c:" + d, "label": (t[:38] + "...") if len(t) > 40 else t, "title": t, "shape": "box",
+              "color": "#e8eef8", "font": {"size": 12}} for d, t in cases.items()]
+    nodes += [{"id": "p:" + p, "label": p, "title": p, "shape": "ellipse", "color": "#f7efe0",
+               "value": sum(len(v) for (_, pp), v in pairs.items() if pp == p)} for p in provs]
+    links = [{"from": "c:" + d, "to": "p:" + p, "title": f"{len(v)} paragraph(s): " + ", ".join(v[:6]) + (" ..." if len(v) > 6 else ""),
+              "value": len(v)} for (d, p), v in pairs.items()]
+    data = json.dumps({"nodes": nodes, "edges": links}).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+    return (f'<div id="g" style="height:{height}px;border:1px solid #ddd"></div>'
+            f'<script src="{VIS_URL}"></script><script>const d={data};'
+            'new vis.Network(document.getElementById("g"),{nodes:new vis.DataSet(d.nodes),edges:new vis.DataSet(d.edges)},'
+            '{physics:{stabilization:{iterations:200}},interaction:{hover:true,zoomView:true,dragView:true,navigationButtons:true},'
+            'edges:{color:{color:"#9aa5b5"},smooth:false},nodes:{scaling:{min:12,max:40}}});</script>')

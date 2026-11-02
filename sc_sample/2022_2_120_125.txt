@@ -1,0 +1,258 @@
+CASE TITLE: M/S WIZAMAN IMPEX PVT. LTD. v. KEDRION BIOPHARMA INC.
+
+120            SUPREME COURT
+[2022]REPORTS
+2 S.C.R. 120              [2022] 2 S.C.R.
+
+
+A                    M/S WIZAMAN IMPEX PVT. LTD.
+v.
+KEDRION BIOPHARMA INC.
+(Civil Appeal No. 466 of 2022)
+B                             FEBRUARY 7, 2022
+[DINESH MAHESHWARI AND VIKRAM NATH, JJ.]
+Insolvency and Bankruptcy Code, 2016 – s.9 – Corporate
+Insolvency Resolution – Respondent filed s.9 application against
+appellant-corporate debtor – National Company Law Tribunal
+C
+(‘NCLT’) considered the documents referred by the respondent in
+support of its contention that there had been acknowledgment of
+debt and thereby the period of limitation would shift from the date
+of acknowledgement – However, NCLT rejected the s.9 application
+by noting that, viewed from any angle, the application filed by the
+D     respondent was beyond the limitation period of three years – In
+appeal before National Company Law Appellate Tribunal (‘NCLAT’),
+respondent sought permission to produce exchanges of e-mails with
+respect to the propositions for settlement of dues – The said
+documents were not on record before the NCLT – Appellate Tribunal
+granted permission to respondent to place such additional
+E
+documents on record – All suggestions, admissions and offers
+evidenced by said e-mails were taken by NCLAT as acknowledgement
+by the corporate debtor within time and therefore, the order of the
+NCLT rejecting s.9 application was set aside – Held: The impugned
+order of NCLAT allowing the appeal and even admitting the s.9
+F     application cannot be sustained on a short point that the said
+additional documents were taken on record only while finally
+deciding the appeal and without adequate opportunity of response
+to the corporate debtor – However, at the same time, due
+consideration of the said documents also appears requisite and the
+documents i.e., the said e-mails, cannot be removed out of
+G
+consideration only because they were not on record before NCLT –
+NCLT directed to re-consider the s.9 application filed by respondent-
+applicant while taking into consideration the additional documents
+taken on the record and at the same time, while extending adequate
+opportunity of hearing to the corporate debtor.
+H
+120
+M/S WIZAMAN IMPEX PVT. LTD. v. KEDRION BIOPHARMA INC.                121
+
+
+Partly allowing the appeal, the Court                        A
+HELD: 1. The impugned order allowing the appeal and even
+admitting the application under Section 9 of the Insolvency and
+Bankruptcy Code, 2016 cannot be sustained on a short point that
+the said additional documents were taken on record only while
+finally deciding the appeal and without adequate opportunity of      B
+response to the corporate debtor. However, at the same time,
+due consideration of the said documents also appears requisite
+and the documents i.e., the said e-mails, cannot be removed out
+of consideration only because they were not on record before
+NCLT. [Para 7][124-B-C]                                              C
+2. The appropriate course in this matter would be to set
+aside the impugned order passed by NCLAT to the extent it has
+allowed the application under Section 9 of the Code filed by the
+applicant-respondent but while retaining the other part of the
+impugned order taking the documents filed on record. After taking    D
+the said documents on record, for the appropriate process of
+adjudication in the matter, it is also considered just and proper
+that the order dated 06.10.2020 passed by NCLT be also set
+aside and the NCLT be directed to re-consider the application
+under Section 9 of the Code as filed by the applicant-respondent
+while taking into consideration the additional documents now         E
+taken on record and at the same time, while extending an adequate
+opportunity of hearing to the corporate debtor. [Para 8][124-C-
+E]
+CIVIL APPELLATE JURISDICTION: Civil Appeal No. 466 of
+2022.                                                                F
+
+From the Judgment and Order dated 15.12.2021 of the National
+Company Law Appellate Tribunal, New Delhi in Company Appeal (AT)
+(Insolvency) No.981 of 2020.
+Jayant K. Mehta, Sr. Adv., A. T. Patra, Karan Khaitan, Aditya   G
+Ghadge, Ms. Bina Gupta, Advs. for the Appellant.
+Nakul Dewan, Sr. Adv., Ms. Suruchi Suri, Simran Jot Singh,
+Chanchal Kumar Ganguli, Advs. for the Respondent.
+
+H
+122              SUPREME COURT REPORTS                                  [2022] 2 S.C.R.
+
+
+A            The Judgment of the Court was delivered by
+DINESH MAHESHWARI, J.
+1. Having regard to the short point involved and the contesting
+parties being represented, we have heard learned counsel for the parties
+finally at this stage itself.
+B
+2. By way of this appeal, the appellant-company, said to be the
+corporate debtor within the meaning of the Insolvency and Bankruptcy
+Code, 20161, has questioned the judgment and order dated 15.12.2021,
+as passed in Company Appeal (AT) Insolvency No. 981 of 2020 whereby,
+the National Company Law Appellate Tribunal, Principal Bench, New
+C     Delhi2 has set aside the order dated 06.10.2020, as passed by the National
+Company Law Tribunal, New Delhi Bench- V3 in CP(IB) 841(ND) of
+2020 and has also allowed the application moved by the applicant
+(respondent herein) under Section 9 of the Code.
+3. The said application under Section 9 of the Code was filed by
+D     the applicant-respondent on 30.06.2020, in its capacity as an operational
+creditor of the corporate debtor while claiming, inter alia, that there had
+been a distribution agreement whereby, the corporate debtor was to sell
+the pharmaceutical products of the applicant company only until its
+subsidiary by the name “Kedrion India” was capable of doing so. Several
+E     invoices were raised in duration and credit notes were also issued. It has
+been the case of the applicant-respondent that as regards the debts due,
+a notice dated 25.07.2019 was sent, demanding a sum of USD 9,01,000
+but, the said demand notice was returned undelivered. Thereafter, on
+07.08.2019, another demand notice was sent at the new registered office
+address of the corporate debtor. The applicant alleged that on 17.08.2019,
+F     the corporate debtor replied to the said demand notice disputing the
+admitted and acknowledged the dues payable, with reference to its pending
+dispute with the Directorate of Health Services, Maharashtra with regard
+to the supply of short shelf-life products. The applicant contended that
+the corporate debtor had committed a default within the meaning of
+G     Section 3(12) of the Code and the outstanding amount qualified as an
+operational debt within the meaning of Section 3(11) read with Section
+5(21) of the Code.
+
+1
+Hereinafter also referred to as ‘the Code
+2
+Hereinafter also referred to as ‘the Appellate Tribunal’ or ‘the NCLAT’.
+3
+H       Hereinafter also referred to as ‘the Adjudicating Authority’ or‘the NCLT’.
+M/S WIZAMAN IMPEX PVT. LTD. v. KEDRION BIOPHARMA INC.                         123
+[DINESH MAHESHWARI, J.]
+
+4. In its order dated 06.10.2020, the NCLT considered the              A
+documents referred by the applicant in support of its contention that
+there had been acknowledgment of debt and thereby the period of
+limitation would shift from the date of acknowledgment. The NCLT
+observed that the document dated 15.12.2017 was a credit memo, issued
+by the applicant and not by the respondent and thus, it could not be
+B
+treated as an acknowledgment of debt. As regards document dated
+07.07.2016 carrying the signatures of the Director of the Company and
+addressed to the Bank regarding payment of pending invoices, the NCLT
+observed that even if the said letter was treated as an acknowledgment
+of debt, the limitation would run from its date, i.e., 07.07.2016. The NCLT
+further considered another letter dated 02.02.2017 and observed that          C
+even if the said document was taken as an acknowledgement of debt,
+the limitation would run from 02.02.2017. Hence, the NCLT came to the
+conclusion that, viewed from any angle, the application filed on 30.06.2020
+was beyond the period of three years in terms of Article 137 of the
+Limitation Act, 1963. Thus, the NCLT proceeded to reject the application      D
+so made by the respondent.
+5. It appears from the perusal of the record that the applicant-
+respondent, in appeal against the aforesaid order of the NCLT, moved
+an application (I.A. No. 2685 of 2020) before the Appellate Tribunal and
+thereby, sought permission to produce the exchanges of e-mails from           E
+03.11.2017 to 11.01.2019 with respect to the propositions for settlement
+of dues. Admittedly, the said documents were not on record before the
+NCLT.
+6. However, the Appellate Tribunal found it just and proper to
+grant permission to the applicant (appellant before the NCLAT) to place       F
+such additional documents on record; but accorded such permission only
+in the impugned order dated 15.12.2021. Thereafter, on the basis of the
+said additional documents taken on record, the Appellate Tribunal came
+to the conclusion that the corporate debtor had admitted its liability and
+had shown its readiness to make payment as also to revise the settlement      G
+proposal. All such suggestions, admissions and offers evidenced by the
+said e-mails were taken by the Appellate Tribunal as acknowledgement
+by the corporate debtor within time and thus, it was held that the
+Adjudicating Authority erred in holding the applicant’s claim to be barred
+by time.
+H
+124             SUPREME COURT REPORTS                           [2022] 2 S.C.R.
+
+
+A            7. Though several contentions have been urged by the learned
+counsel for contesting parties as regards effect of the said documents
+placed before the Appellate Tribunal by way of I.A. No. 2685 of 2020
+but, we are clearly of the view that the impugned order allowing the
+appeal and even admitting the application under Section 9 of the Code
+cannot be sustained on a short point that the said additional documents
+B
+were taken on record only while finally deciding the appeal and without
+adequate opportunity of response to the corporate debtor. However, at
+the same time, due consideration of the said documents also appears
+requisite and the documents i.e., the said e-mails, cannot be removed
+out of consideration only because they were not on record before NCLT.
+C            8. For what has been discussed and observed hereinabove, in our
+view, the appropriate course in this matter would be to set aside the
+impugned order dated 15.12.2021 passed by NCLAT to the extent it has
+allowed the application under Section 9 of the Code filed by the applicant-
+respondent but while retaining the other part of the impugned order taking
+D     the documents filed with I.A. No. 2685 of 2020 on record. After taking
+the said documents on record, for the appropriate process of adjudication
+in the matter, it is also considered just and proper that the order dated
+06.10.2020 passed by NCLT be also set aside and the NCLT be directed
+to re-consider the application under Section 9 of the Code as filed by the
+applicant-respondent while taking into consideration the additional
+E     documents now taken on record and at the same time, while extending
+an adequate opportunity of hearing to the corporate debtor.
+9. We may, of course, observe that at the outset Mr. Nakul Dewan,
+learned senior counsel appearing for the respondent has attempted to
+question the maintainability of this appeal at the instance of the corporate
+F     debtor because NCLAT had, by the impugned order, allowed the
+application under Section 9 of the Code. We have overruled such objection
+for the simple reason that the said application had been rejected by NCLT
+and was allowed only by way of impugned order and until the said order
+was examined by this Court and attained finality, the right and locus of
+G     the corporate debtor to challenge the correctness thereof, could not have
+been denied. In any case, in the present matter, the impugned order was
+passed on 15.12.2021 and admittedly, no other steps had been taken in
+the matter including that of appointment of resolution professional. In
+the given set of facts, we overruled the objections raised by the learned
+senior counsel for the respondent.
+H
+M/S WIZAMAN IMPEX PVT. LTD. v. KEDRION BIOPHARMA INC.                         125
+[DINESH MAHESHWARI, J.]
+
+10. Accordingly, this appeal is allowed to the extent and in the        A
+manner indicated hereinabove. The application under Section 9 of the
+Code in CP(IB) 841(ND) of 2020 stands restored for re-consideration
+by the Adjudicating Authority keeping in view the observations and
+requirements foregoing.
+11. It goes without saying that we have not pronounced on the          B
+merits of the case either way and not even on the evidentiary value and
+effect of the documents in question. All the aspects are left open for
+examination by the Adjudicating Authority in accordance with law.
+12. Having regard to the circumstances of the case and the fact
+that the application under Section 9 of the Code was filed way back on        C
+30.06.2020, we would expect the Adjudicating Authority to assign a
+reasonable priority to the matter and to proceed expeditiously.
+
+Bibhuti Bhushan Bose                                 Appeal partly allowed.
+D
+
+
+
+
+E
+
+
+
+
+F
+
+
+
+
+G
+
+
+
+
+H
+
