@@ -1,3 +1,5 @@
+import pytest
+
 from indlaw.kmap import build_map, find_provisions, to_dot
 from indlaw.text import make_chunks
 
@@ -41,3 +43,18 @@ def test_article_lists_give_one_mention_each():
 def test_code_of_criminal_procedure_is_found():
     got = [p for p, _ in find_provisions("She relied on Section 41 of the Code of Criminal Procedure, 1973.")]
     assert got == ["Section 41, Code of Criminal Procedure, 1973"]
+
+
+def test_app_provision_map_view_on_fixture(tmp_path):
+    import os
+
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    (tmp_path / "a.txt").write_text("CASE TITLE: A v. B\n\n1. The court considered Article 21 of the Constitution of India.\n", encoding="utf-8")
+    os.environ["INDLAW_CORPUS"] = str(tmp_path)
+    at = AppTest.from_file("app.py").run()
+    at.radio[0].set_value("Provision map").run()
+    assert not at.exception
+    assert any("1 mentions" in m.value for m in at.markdown)
+    assert "Article 21" in str(at.dataframe[0].value)

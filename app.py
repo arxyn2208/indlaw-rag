@@ -36,6 +36,10 @@ if not os.path.isdir(folder):
     st.stop()
 
 index = load(folder)
+if os.path.basename(os.path.normpath(folder)) == "sc_2019_sample":
+    st.warning("Prototype on six real Supreme Court of India judgments (2019, CC-BY-4.0, Dattam Labs via AWS Open Data, "
+               "see sc_2019_sample/SOURCE.md). Text came from PDFs and may contain extraction errors. Paragraph labels "
+               "come from this tool's splitter, not the court. Answers can miss the question and are not legal advice.")
 if os.path.basename(os.path.normpath(folder)) == "sample_corpus":
     st.warning("Prototype. The three cases loaded here are FICTIONAL, written for this demo. Nothing below is a "
                "real judgment or legal advice, and answers can miss the question.")
@@ -45,6 +49,34 @@ st.sidebar.metric("Passages indexed", len(index.chunks))
 min_cov = st.sidebar.slider("Abstention threshold (term coverage)", 0.0, 1.0, 0.5, 0.05,
                             help="The system refuses when the best passage covers less of the question's key terms than this.")
 
+def provision_map_tab() -> None:
+    from collections import Counter
+
+    from indlaw.kmap import build_map, to_dot
+
+    edges = build_map(index.chunks)
+    st.caption("Literal mentions only: each row is a paragraph whose text contains the provision, with the sentence as "
+               "evidence. It does not say the case applies or interprets the provision. Pattern matching can miss or "
+               "mis-split mentions, and accuracy has not been measured. Case citations and topics are not extracted.")
+    if not edges:
+        st.info("No Article or Section mentions found in this corpus.")
+        return
+    counts = Counter(e.provision for e in edges)
+    chosen = st.multiselect("Provisions", [p for p, _ in counts.most_common()], default=[p for p, _ in counts.most_common(4)])
+    titles = sorted({e.title for e in edges})
+    case = st.selectbox("Case", ["All cases"] + titles)
+    shown = [e for e in edges if e.provision in chosen and (case == "All cases" or e.title == case)]
+    st.write(f"{len(shown)} mentions in {len({e.doc_id for e in shown})} cases")
+    if shown:
+        st.graphviz_chart(to_dot(shown, top=len(chosen) or None))
+        st.dataframe([{"Case": e.title, "Paragraph": e.label, "Provision": e.provision, "Sentence": e.evidence}
+                      for e in shown])
+
+
+view = st.radio("View", ["Ask", "Provision map"], horizontal=True)
+if view == "Provision map":
+    provision_map_tab()
+    st.stop()
 question = st.text_input("Ask about the loaded judgments")
 if question:
     use_model = generator is not None
