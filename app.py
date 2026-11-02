@@ -56,14 +56,16 @@ if question:
     if use_model:
         usage_guard().record()
         st.session_state["model_uses"] = st.session_state.get("model_uses", 0) + 1
-        generator = CappedGenerator(generator)
+        generator = CappedGenerator(generator, time_budget=float(os.getenv("INDLAW_TIME_BUDGET", "60")))
     if use_model:
+        rag = None
         try:
             with st.spinner("Generating from the retrieved passages..."):
                 rag = answer_rag(index, question, generator, min_coverage=min_cov)
         except GenerationError as err:
-            st.error(f"{err} No answer was produced.")
-            st.stop()
+            st.warning(f"The model did not answer ({err}). Showing extractive quotes instead (not a generated answer).")
+            use_model = False
+    if use_model:
         if rag.mode == "abstained":
             st.warning(f"No answer: {rag.text}")
         else:

@@ -55,29 +55,42 @@ class ChatEndpoint:
         self.base_url = (base_url or os.getenv("INDLAW_LLM_URL", "http://localhost:11434/v1")).rstrip("/")
         self.model = model or os.getenv("INDLAW_LLM_MODEL", "llama3.1")
         self.api_key = api_key or os.getenv("INDLAW_LLM_KEY", "")
-        self.timeout = timeout
-        self.retries = retries
+        self.timeout = int(os.getenv("INDLAW_LLM_TIMEOUT", timeout))
+        self.retries = int(os.getenv("INDLAW_LLM_RETRIES", retries))
         self.backoff = backoff
 
-    def complete(self, prompt: str) -> str:
+    supports_deadline = True
+
+    def complete(self, prompt: str, deadline: float | None = None) -> str:
+        """``deadline`` is a time.monotonic() value; no attempt, wait or retry runs past it."""
         body = json.dumps({"model": self.model, "temperature": 0,
                            "messages": [{"role": "user", "content": prompt}]}).encode()
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         req = urllib.request.Request(f"{self.base_url}/chat/completions", body, headers)
+        def wait(attempt: int) -> bool:
+            pause = 2 ** attempt * self.backoff
+            if deadline is not None and time.monotonic() + pause >= deadline:
+                return False
+            time.sleep(pause)
+            return True
+
         for attempt in range(self.retries + 1):
+            timeout = self.timeout
+            if deadline is not None:
+                timeout = min(timeout, deadline - time.monotonic())
+                if timeout < 1:
+                    raise GenerationError("The model took too long for this question.")
             try:
-                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
                     return json.load(resp)["choices"][0]["message"]["content"].strip()
             except urllib.error.HTTPError as e:
-                if e.code in (429, 500, 502, 503, 504) and attempt < self.retries:
-                    time.sleep(2 ** attempt * self.backoff)
+                if e.code in (429, 500, 502, 503, 504) and attempt < self.retries and wait(attempt):
                     continue
                 raise GenerationError(f"The language model service returned HTTP {e.code}. Try again shortly.") from e
             except (urllib.error.URLError, TimeoutError) as e:
-                if attempt < self.retries:
-                    time.sleep(2 ** attempt * self.backoff)
+                if attempt < self.retries and wait(attempt):
                     continue
                 raise GenerationError(f"Could not reach the language model service: {e}") from e
         raise GenerationError("The language model service did not respond.")

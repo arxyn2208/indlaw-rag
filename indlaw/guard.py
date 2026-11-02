@@ -47,11 +47,17 @@ class UsageGuard:
 class CappedGenerator:
     """Wraps a generator so one question cannot make more than ``limit`` model calls."""
 
-    def __init__(self, inner, limit: int = MAX_CALLS_PER_QUESTION):
+    def __init__(self, inner, limit: int = MAX_CALLS_PER_QUESTION, time_budget: float | None = None):
         self.inner, self.limit, self.calls = inner, limit, 0
+        self.time_budget = time_budget
+        self.started = time.monotonic()
 
     def complete(self, prompt: str) -> str:
         if self.calls >= self.limit:
             raise GenerationError("This question reached its model call limit.")
+        if self.time_budget is not None and time.monotonic() - self.started > self.time_budget:
+            raise GenerationError("The model took too long for this question.")
         self.calls += 1
+        if self.time_budget is not None and getattr(self.inner, "supports_deadline", False):
+            return self.inner.complete(prompt, deadline=self.started + self.time_budget)
         return self.inner.complete(prompt)
