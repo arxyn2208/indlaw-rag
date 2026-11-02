@@ -23,25 +23,28 @@ class UsageGuard:
         self._stamps: deque[float] = deque()
         self._lock = threading.Lock()
 
-    def check(self, question: str, session_used: int) -> str | None:
-        """Return a reason the model may NOT be used, or None when it may. Does not count a use."""
+    def check(self, question: str, session_used: int, uses: int = 1) -> str | None:
+        """Return a reason the model may NOT be used, or None when it may. Does not count a use.
+
+        ``uses`` is how many model uses this request will take; all of them must fit under every cap."""
         if len(question) > MAX_QUESTION_CHARS:
             return f"Questions are limited to {MAX_QUESTION_CHARS} characters."
-        if session_used >= self.per_session:
+        if session_used + uses > self.per_session:
             return f"This session has used its {self.per_session} model answers."
         now = self.clock()
         with self._lock:
             while self._stamps and now - self._stamps[0] > 86400:
                 self._stamps.popleft()
-            if len(self._stamps) >= self.per_day:
+            if len(self._stamps) + uses > self.per_day:
                 return "The demo's daily model budget is used up."
-            if sum(1 for t in self._stamps if now - t <= 3600) >= self.per_hour:
+            if sum(1 for t in self._stamps if now - t <= 3600) + uses > self.per_hour:
                 return "The demo's hourly model budget is used up."
         return None
 
-    def record(self) -> None:
+    def record(self, uses: int = 1) -> None:
         with self._lock:
-            self._stamps.append(self.clock())
+            now = self.clock()
+            self._stamps.extend([now] * uses)
 
 
 class CappedGenerator:

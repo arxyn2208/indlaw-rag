@@ -50,3 +50,20 @@ def test_llm_only_prompt_has_no_passages():
     g = Gen()
     answer_llm_only("What is bail?", g)
     assert "[1]" not in g.prompts[0] and "What is bail?" in g.prompts[0]
+
+
+def test_comparison_must_fit_all_three_uses_under_every_cap():
+    from indlaw.guard import UsageGuard
+
+    g = UsageGuard(per_session=8, per_hour=30, per_day=100, clock=lambda: 1000.0)
+    assert g.check("q", 5, 3) is None        # 5 + 3 = 8 fits
+    assert g.check("q", 6, 3) is not None    # 6 + 3 = 9 does not
+    assert g.check("q", 7, 1) is None and g.check("q", 8, 1) is not None  # single use unchanged
+    g.record(28)
+    assert g.check("q", 0, 2) is None        # 28 + 2 = 30 fits the hour
+    assert g.check("q", 0, 3) is not None    # 28 + 3 = 31 does not
+    g2 = UsageGuard(per_session=8, per_hour=1000, per_day=100, clock=lambda: 1000.0)
+    g2.record(98)
+    assert g2.check("q", 0, 2) is None and g2.check("q", 0, 3) is not None
+    g2.record(3)
+    assert len(g2._stamps) == 101

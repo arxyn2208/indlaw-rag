@@ -96,12 +96,11 @@ def compare_tab() -> None:
     if not q:
         return
     uses = st.session_state.get("model_uses", 0)
-    blocked = usage_guard().check(q, uses + 2)
+    blocked = usage_guard().check(q, uses, 3)
     if blocked:
         st.info(f"{blocked} A comparison needs 3 model uses, so it was not run.")
         return
-    for _ in range(3):
-        usage_guard().record()
+    usage_guard().record(3)
     st.session_state["model_uses"] = uses + 3
     cols = st.columns(3)
     budget = float(os.getenv("INDLAW_TIME_BUDGET", "60"))
