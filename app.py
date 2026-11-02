@@ -5,7 +5,7 @@ import os
 import streamlit as st
 
 from indlaw.answer import answer
-from indlaw.generate import annotate, answer_rag, generator_from_env
+from indlaw.generate import GenerationError, annotate, answer_rag, generator_from_env
 from indlaw.index import Index
 
 st.set_page_config(page_title="indlaw", layout="wide")
@@ -37,8 +37,12 @@ min_cov = st.sidebar.slider("Abstention threshold (term coverage)", 0.0, 1.0, 0.
 question = st.text_input("Ask about the loaded judgments")
 if question:
     if generator:
-        with st.spinner("Generating from the retrieved passages..."):
-            rag = answer_rag(index, question, generator, min_coverage=min_cov)
+        try:
+            with st.spinner("Generating from the retrieved passages..."):
+                rag = answer_rag(index, question, generator, min_coverage=min_cov)
+        except GenerationError as err:
+            st.error(f"{err} No answer was produced.")
+            st.stop()
         if rag.mode == "abstained":
             st.warning(f"No answer: {rag.text}")
         else:

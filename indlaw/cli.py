@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 
 from .answer import answer
 from .evaluate import evaluate, load_gold
-from .generate import answer_rag, generator_from_env
+from .generate import GenerationError, answer_rag, generator_from_env
 from .index import Index
 
 
@@ -40,7 +41,11 @@ def main(argv: list[str] | None = None) -> int:
             print("[extractive mode: quotes from the judgments, no language model]")
             print(answer(index, args.question).render())
         else:
-            result = answer_rag(index, args.question, generator)
+            try:
+                result = answer_rag(index, args.question, generator)
+            except GenerationError as err:
+                print(f"error: {err}", file=sys.stderr)
+                return 1
             print(f"[{result.mode}]\n{result.text}")
             for n, chunk in enumerate(result.sources, start=1):
                 print(f"  [{n}] {chunk.title}, {chunk.label}")

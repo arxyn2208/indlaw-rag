@@ -175,3 +175,32 @@ def test_annotate_maps_citations_to_the_right_passage(folder):
     assert rows[0][2] == "cited" and rows[0][1] == [chunks[1]]
     assert rows[1][2] == "uncited"
     assert rows[2][2] == "invalid"
+
+
+def test_chat_endpoint_retries_then_fails_cleanly(monkeypatch):
+    import io
+    import urllib.error
+    import urllib.request
+
+    import pytest
+
+    from indlaw.generate import ChatEndpoint, GenerationError
+
+    calls = {"n": 0}
+
+    def fake_urlopen(req, timeout=0):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise urllib.error.HTTPError(req.full_url, 503, "busy", {}, io.BytesIO(b""))
+        return io.BytesIO(b'{"choices":[{"message":{"content":" ok "}}]}')
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    assert ChatEndpoint("http://x/v1", "m", "k", retries=3, backoff=0).complete("hi") == "ok"
+    assert calls["n"] == 3
+
+    def always_503(req, timeout=0):
+        raise urllib.error.HTTPError(req.full_url, 503, "busy", {}, io.BytesIO(b""))
+
+    monkeypatch.setattr(urllib.request, "urlopen", always_503)
+    with pytest.raises(GenerationError):
+        ChatEndpoint("http://x/v1", "m", "k", retries=1, backoff=0).complete("hi")

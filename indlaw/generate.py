@@ -16,6 +16,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 
@@ -36,13 +38,19 @@ def build_prompt(question: str, chunks: list[Chunk]) -> str:
     return f"{SYSTEM}\n\nPassages:\n{passages}\n\nQuestion: {question}\nAnswer:"
 
 
+class GenerationError(RuntimeError):
+    """The model service failed after retries."""
+
+
 class ChatEndpoint:
     def __init__(self, base_url: str | None = None, model: str | None = None, api_key: str | None = None,
-                 timeout: int = 120):
+                 timeout: int = 120, retries: int = 3, backoff: float = 2.0):
         self.base_url = (base_url or os.getenv("INDLAW_LLM_URL", "http://localhost:11434/v1")).rstrip("/")
         self.model = model or os.getenv("INDLAW_LLM_MODEL", "llama3.1")
         self.api_key = api_key or os.getenv("INDLAW_LLM_KEY", "")
         self.timeout = timeout
+        self.retries = retries
+        self.backoff = backoff
 
     def complete(self, prompt: str) -> str:
         body = json.dumps({"model": self.model, "temperature": 0,
@@ -51,8 +59,21 @@ class ChatEndpoint:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         req = urllib.request.Request(f"{self.base_url}/chat/completions", body, headers)
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            return json.load(resp)["choices"][0]["message"]["content"].strip()
+        for attempt in range(self.retries + 1):
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    return json.load(resp)["choices"][0]["message"]["content"].strip()
+            except urllib.error.HTTPError as e:
+                if e.code in (429, 500, 502, 503, 504) and attempt < self.retries:
+                    time.sleep(2 ** attempt * self.backoff)
+                    continue
+                raise GenerationError(f"The language model service returned HTTP {e.code}. Try again shortly.") from e
+            except (urllib.error.URLError, TimeoutError) as e:
+                if attempt < self.retries:
+                    time.sleep(2 ** attempt * self.backoff)
+                    continue
+                raise GenerationError(f"Could not reach the language model service: {e}") from e
+        raise GenerationError("The language model service did not respond.")
 
 
 class LocalGGUF:
