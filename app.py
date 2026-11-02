@@ -6,6 +6,7 @@ import streamlit as st
 
 from indlaw.answer import answer
 from indlaw.generate import REASONS, GenerationError, answer_rag, generator_from_env
+from indlaw.guard import CappedGenerator, UsageGuard
 from indlaw.index import Index
 
 st.set_page_config(page_title="indlaw", layout="wide")
@@ -22,12 +23,22 @@ def load(folder: str) -> Index:
     return Index.from_folder(folder)
 
 
+@st.cache_resource
+def usage_guard() -> UsageGuard:
+    return UsageGuard(per_session=int(os.getenv("INDLAW_SESSION_LIMIT", "8")),
+                      per_hour=int(os.getenv("INDLAW_HOURLY_LIMIT", "30")),
+                      per_day=int(os.getenv("INDLAW_DAILY_LIMIT", "100")))
+
+
 folder = os.getenv("INDLAW_CORPUS", "corpus")
 if not os.path.isdir(folder):
     st.error(f"Corpus folder '{folder}' not found. Put .txt judgments there, or set INDLAW_CORPUS.")
     st.stop()
 
 index = load(folder)
+if os.path.basename(os.path.normpath(folder)) == "sample_corpus":
+    st.warning("Prototype. The three cases loaded here are FICTIONAL, written for this demo. Nothing below is a "
+               "real judgment or legal advice, and answers can miss the question.")
 docs = len({c.doc_id for c in index.chunks})
 st.sidebar.metric("Judgments loaded", docs)
 st.sidebar.metric("Passages indexed", len(index.chunks))
@@ -36,7 +47,17 @@ min_cov = st.sidebar.slider("Abstention threshold (term coverage)", 0.0, 1.0, 0.
 
 question = st.text_input("Ask about the loaded judgments")
 if question:
-    if generator:
+    use_model = generator is not None
+    if use_model:
+        blocked = usage_guard().check(question, st.session_state.get("model_uses", 0))
+        if blocked:
+            use_model = False
+            st.info(f"{blocked} Showing extractive quotes instead (not a generated answer).")
+    if use_model:
+        usage_guard().record()
+        st.session_state["model_uses"] = st.session_state.get("model_uses", 0) + 1
+        generator = CappedGenerator(generator)
+    if use_model:
         try:
             with st.spinner("Generating from the retrieved passages..."):
                 rag = answer_rag(index, question, generator, min_coverage=min_cov)

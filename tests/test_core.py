@@ -287,3 +287,31 @@ def test_judge_can_rescue_low_overlap_claim(folder):
     reply = f'- Entirely different wording here. [1] "{quote}"'
     out = answer_rag(ix, q, Scripted(reply, ["YES"]))
     assert out.mode == "rag" and out.shown[0].status == "verified_quote"
+
+
+def test_usage_guard_limits():
+    from indlaw.guard import MAX_QUESTION_CHARS, UsageGuard
+    t = [1000.0]
+    g = UsageGuard(per_session=2, per_hour=3, per_day=4, clock=lambda: t[0])
+    assert g.check("ok", 0) is None
+    assert "limited to" in g.check("x" * (MAX_QUESTION_CHARS + 1), 0)
+    assert "session" in g.check("ok", 2)
+    for _ in range(3):
+        g.record()
+    assert "hourly" in g.check("ok", 0)
+    t[0] += 3700  # an hour later the hourly window clears, the daily one does not
+    assert g.check("ok", 0) is None
+    g.record()
+    assert "daily" in g.check("ok", 0)
+    t[0] += 90000
+    assert g.check("ok", 0) is None
+
+
+def test_capped_generator_stops_after_limit():
+    from indlaw.generate import GenerationError
+    from indlaw.guard import CappedGenerator
+    capped = CappedGenerator(Fake("x"), limit=2)
+    capped.complete("a")
+    capped.complete("b")
+    with pytest.raises(GenerationError):
+        capped.complete("c")
