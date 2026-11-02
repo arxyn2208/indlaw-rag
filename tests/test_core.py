@@ -244,3 +244,17 @@ def test_stemming_does_not_overmerge_or_claim_irregulars():
     assert tokens("bail") != tokens("bale")
     assert tokens("court") != tokens("count")
     assert tokens("judge") != tokens("judgment")
+
+
+def test_rag_context_includes_following_paragraph():
+    from indlaw.generate import with_neighbours
+    from indlaw.index import Index
+    from indlaw.text import Chunk
+    chunks = [Chunk("a.txt", "A v B", "para 1", "The question is bail."),
+              Chunk("a.txt", "A v B", "para 2", "Held: bail is granted."),
+              Chunk("b.txt", "C v D", "para 1", "Unrelated.")]
+    ix = Index(chunks)
+    out = with_neighbours(ix, [chunks[0], chunks[2]])
+    assert "Held: bail is granted." in out[0].text and out[0].label == "para 1 and para 2"
+    assert out[1].text == "Unrelated."  # next chunk is another case: not appended
+    assert with_neighbours(ix, [chunks[0], chunks[1]])[0].text == "The question is bail."  # neighbour already a hit

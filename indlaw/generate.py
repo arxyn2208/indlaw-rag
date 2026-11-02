@@ -19,7 +19,7 @@ import re
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from .answer import coverage
 
@@ -191,12 +191,31 @@ def parse_statements(text: str, sources: list[Chunk]) -> list[Statement]:
     return out
 
 
+def with_neighbours(index: Index, hits: list[Chunk]) -> list[Chunk]:
+    """Append the next paragraph of the same case to each hit, so the model sees the reasoning that follows.
+
+    A paragraph that states a question often answers it in the next one. A neighbour that is already a hit
+    is not repeated. Quotations are checked against the widened passage.
+    """
+    position = {id(c): i for i, c in enumerate(index.chunks)}
+    hit_ids = {id(c) for c in hits}
+    out = []
+    for c in hits:
+        i = position.get(id(c))
+        nxt = index.chunks[i + 1] if i is not None and i + 1 < len(index.chunks) else None
+        if nxt is not None and nxt.doc_id == c.doc_id and id(nxt) not in hit_ids:
+            c = replace(c, label=f"{c.label} and {nxt.label}", text=c.text + " " + nxt.text)
+        out.append(c)
+    return out
+
+
 def answer_rag(index: Index, question: str, generator, k: int = 4,
                min_coverage: float = RAG_MIN_COVERAGE) -> RagAnswer:
-    hits = [c for c, _ in index.search(question, k=k)]
+    found = [c for c, _ in index.search(question, k=k)]
     terms = set(tokens(question))
-    if not hits or max(coverage(terms, c) for c in hits) < min_coverage:
-        return RagAnswer("abstained", "The loaded judgments do not appear to cover this question.", hits)
+    if not found or max(coverage(terms, c) for c in found) < min_coverage:
+        return RagAnswer("abstained", "The loaded judgments do not appear to cover this question.", found)
+    hits = with_neighbours(index, found)
     reply = generator.complete(build_prompt(question, hits))
     if reply.strip().rstrip(".").upper() == "INSUFFICIENT":
         return RagAnswer("abstained", "The model found the retrieved passages insufficient.", hits)
