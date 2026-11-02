@@ -1,0 +1,9 @@
+corpus/
+index.json
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+.venv/
+.DS_Store
