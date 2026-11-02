@@ -110,7 +110,7 @@ class Statement:
     claim: str
     passage: int | None
     quote: str
-    status: str  # verified_quote, uncited, invalid, no_quote, quote_not_found, off_point
+    status: str  # verified_quote (quotation exists and judge said on point), uncited, invalid, no_quote, quote_not_found, off_point, not_relevant
     warning: str = ""
 
 
@@ -136,6 +136,7 @@ REASONS = {
     "no_quote": "gives no quotation",
     "quote_not_found": "its quotation does not appear in the cited passage",
     "off_point": "its claim shares too few words with its quotation",
+    "not_relevant": "a second model check judged that the quotation does not answer the question or support the claim",
 }
 CUES = ("rejected", "rejecting", "contended", "contention", "argued", "argument", "submitted", "urged",
         "negatived", "not accepted", "dismissed")
@@ -209,8 +210,39 @@ def with_neighbours(index: Index, hits: list[Chunk]) -> list[Chunk]:
     return out
 
 
+JUDGE_PROMPT = """You check one statement against a court passage.
+Question: {question}
+Claim: {claim}
+Quotation: "{quote}"
+Passage: {passage}
+
+Answer YES only if (1) the quotation says what the claim says and (2) the claim directly helps answer the
+question. Answer NO if the claim is on a different point, only mentions the topic, or merely restates the
+question. Reply with one word: YES or NO."""
+
+
+def judge_statements(generator, question: str, statements: list, sources: list) -> list:
+    """Second model pass. A statement whose quotation exists is kept only if the judge says YES.
+
+    This is another model call, so it can be wrong in both directions. It replaces the word-overlap guess
+    for deciding whether a claim is on point; it does not make an answer legally correct.
+    """
+    for st in statements:
+        if st.status not in ("verified_quote", "off_point") or st.passage is None:
+            continue
+        passage = sources[st.passage - 1].text[:1500]
+        verdict = generator.complete(JUDGE_PROMPT.format(question=question, claim=st.claim,
+                                                         quote=st.quote, passage=passage))
+        if verdict.strip().upper().startswith("YES"):
+            if st.status == "off_point":
+                st.status = "verified_quote"
+        else:
+            st.status, st.warning = "not_relevant", ""
+    return statements
+
+
 def answer_rag(index: Index, question: str, generator, k: int = 4,
-               min_coverage: float = RAG_MIN_COVERAGE) -> RagAnswer:
+               min_coverage: float = RAG_MIN_COVERAGE, judge: bool = True) -> RagAnswer:
     found = [c for c, _ in index.search(question, k=k)]
     terms = set(tokens(question))
     if not found or max(coverage(terms, c) for c in found) < min_coverage:
@@ -220,6 +252,8 @@ def answer_rag(index: Index, question: str, generator, k: int = 4,
     if reply.strip().rstrip(".").upper() == "INSUFFICIENT":
         return RagAnswer("abstained", "The model found the retrieved passages insufficient.", hits)
     statements = parse_statements(reply, hits)
+    if judge:
+        statements = judge_statements(generator, question, statements, hits)
     if not any(st.status == "verified_quote" for st in statements):
         return RagAnswer("abstained", "The model gave no statement whose quotation could be found in a cited passage, "
                          "so no answer is shown.", hits, statements)

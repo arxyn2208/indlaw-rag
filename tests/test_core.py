@@ -129,7 +129,7 @@ def test_answer_rag_uses_generator_and_validates(folder):
     words = chunks[0].text.split()[:8]
     quote = " ".join(words)
     fake = Fake(f'- {quote} was stated in the passage. [1] "{quote}"')
-    out = answer_rag(Index.from_folder(folder), q, fake)
+    out = answer_rag(Index.from_folder(folder), q, fake, judge=False)
     assert out.mode == "rag" and len(out.shown) == 1 and out.shown[0].passage == 1
     assert "Passages:" in fake.prompt
 
@@ -199,7 +199,7 @@ def test_uncited_invalid_and_quoteless_statements_are_removed():
 
 def test_answer_rag_abstains_when_no_statement_survives(folder):
     out = answer_rag(Index.from_folder(folder), "Is detention without producing the accused before a magistrate lawful?",
-                     Fake("Detention without a magistrate is plainly unlawful in every case."))
+                     Fake("Detention without a magistrate is plainly unlawful in every case."), judge=False)
     assert out.mode == "abstained" and out.statements
 
 
@@ -258,3 +258,32 @@ def test_rag_context_includes_following_paragraph():
     assert "Held: bail is granted." in out[0].text and out[0].label == "para 1 and para 2"
     assert out[1].text == "Unrelated."  # next chunk is another case: not appended
     assert with_neighbours(ix, [chunks[0], chunks[1]])[0].text == "The question is bail."  # neighbour already a hit
+
+
+class Scripted:
+    """First call returns the statements; later calls are judge verdicts, in order."""
+    def __init__(self, first, verdicts):
+        self.first, self.verdicts = first, list(verdicts)
+
+    def complete(self, prompt):
+        return self.first if self.first is not None and not prompt.startswith("You check") else self.verdicts.pop(0)
+
+
+def test_judge_drops_statement_marked_not_relevant(folder):
+    ix = Index.from_folder(folder)
+    q = "Is detention without producing the accused before a magistrate lawful?"
+    chunk = next(c for c, _ in ix.search(q, k=4))
+    quote = " ".join(chunk.text.split()[:8])
+    reply = f'- {quote} was stated. [1] "{quote}"'
+    assert answer_rag(ix, q, Scripted(reply, ["NO"])).mode == "abstained"
+    assert answer_rag(ix, q, Scripted(reply, ["YES"])).mode == "rag"
+
+
+def test_judge_can_rescue_low_overlap_claim(folder):
+    ix = Index.from_folder(folder)
+    q = "Is detention without producing the accused before a magistrate lawful?"
+    chunk = next(c for c, _ in ix.search(q, k=4))
+    quote = " ".join(chunk.text.split()[:8])
+    reply = f'- Entirely different wording here. [1] "{quote}"'
+    out = answer_rag(ix, q, Scripted(reply, ["YES"]))
+    assert out.mode == "rag" and out.shown[0].status == "verified_quote"
