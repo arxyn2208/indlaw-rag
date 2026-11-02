@@ -27,8 +27,13 @@ from .text import Chunk, tokens
 
 SYSTEM = (
     "You answer questions about Indian court judgments using ONLY the numbered passages given. "
-    "Cite every sentence with the passage numbers it relies on, like [1] or [2][3]. "
-    "If the passages do not answer the question, reply exactly: INSUFFICIENT. "
+    "Reply with at most 3 bullet lines. Each line has: a short claim in your own words, the passage number "
+    "in brackets, then an exact quotation of 5 to 30 words copied character for character from that passage, "
+    "in double quotes. Example: - The court held that X. [2] \"words copied exactly from passage 2\". "
+    "Only say the court held something if the passage says the court held it. If a passage reports an argument, "
+    "a contention or a view that the court rejected, say that in the claim. "
+    "Do not answer yes or no unless a passage states it. "
+    "If no passage answers the question, reply exactly: INSUFFICIENT. "
     "Do not use outside knowledge. This is not legal advice."
 )
 
@@ -99,25 +104,89 @@ def generator_from_env():
 
 
 @dataclass
+class Statement:
+    claim: str
+    passage: int | None
+    quote: str
+    status: str  # verified_quote, uncited, invalid, no_quote, quote_not_found, off_point
+    warning: str = ""
+
+
+@dataclass
 class RagAnswer:
-    mode: str  # "rag", "abstained" or "extractive"
+    mode: str  # "rag" or "abstained"
     text: str
     sources: list[Chunk] = field(default_factory=list)
-    cited: list[int] = field(default_factory=list)
-    uncited_sentences: list[str] = field(default_factory=list)
-    bad_citations: list[int] = field(default_factory=list)
+    statements: list[Statement] = field(default_factory=list)
+
+    @property
+    def shown(self) -> list[Statement]:
+        return [st for st in self.statements if st.status == "verified_quote"]
+
+    @property
+    def removed(self) -> list[Statement]:
+        return [st for st in self.statements if st.status != "verified_quote"]
 
 
-def check_citations(text: str, n_passages: int) -> tuple[list[int], list[str], list[int]]:
-    """``(valid cited numbers, sentences with no citation, out-of-range numbers)``."""
-    cited, bad, uncited = [], [], []
-    for sentence in re.split(r"(?<=[.;?!])\s+(?=[A-Z\[])", text.strip()):
-        numbers = [int(n) for n in re.findall(r"\[(\d+)\]", sentence)]
-        if not numbers and len(tokens(sentence)) >= 4:
-            uncited.append(sentence)
-        for n in numbers:
-            (cited if 1 <= n <= n_passages else bad).append(n)
-    return sorted(set(cited)), uncited, sorted(set(bad))
+REASONS = {
+    "uncited": "cites no passage",
+    "invalid": "cites a passage number that was not retrieved",
+    "no_quote": "gives no quotation",
+    "quote_not_found": "its quotation does not appear in the cited passage",
+    "off_point": "its claim shares too few words with its quotation",
+}
+CUES = ("rejected", "rejecting", "contended", "contention", "argued", "argument", "submitted", "urged",
+        "negatived", "not accepted", "dismissed")
+MIN_OVERLAP = 0.4
+
+
+def _norm(text: str) -> str:
+    text = text.replace("\u2018", "'").replace("\u2019", "'").replace("\u201c", '"').replace("\u201d", '"')
+    return re.sub(r"\s+", " ", text).strip().lower()
+
+
+def _quote_in(quote: str, passage: str) -> bool:
+    fragments = [f.strip(" .,;:-") for f in re.split(r"\.\.\.|\u2026", quote)]
+    fragments = [f for f in fragments if f]
+    hay = _norm(passage)
+    return bool(fragments) and all(len(f.split()) >= 3 and _norm(f) in hay for f in fragments)
+
+
+def parse_statements(text: str, sources: list[Chunk]) -> list[Statement]:
+    """Turn a model reply into checked statements.
+
+    A statement is "verified_quote" only when it cites a retrieved passage, gives a quotation that is
+    found verbatim in that passage, and its claim shares enough words with the quotation. This proves the
+    words exist in the source. It does not prove the claim follows from them.
+    """
+    out = []
+    for line in text.splitlines():
+        line = re.sub(r"^[\s\-*\u2022\d.)]+", "", line).strip()
+        if len(tokens(line)) < 4:
+            continue
+        numbers = [int(n) for n in re.findall(r"\[(\d+)\]", line)]
+        quotes = re.findall(r'["\u201c]([^"\u201c\u201d]{12,})["\u201d]', line)
+        claim = re.sub(r'\s+', ' ', re.sub(r'\[\d+\]|["\u201c][^"\u201c\u201d]*["\u201d]', '', line)).strip(" :-")
+        quote = quotes[0].strip() if quotes else ""
+        n = numbers[0] if numbers else None
+        if not numbers:
+            status = "uncited"
+        elif any(not 1 <= x <= len(sources) for x in numbers):
+            status = "invalid"
+        elif not quote:
+            status = "no_quote"
+        elif not all(_quote_in(quote, sources[x - 1].text) for x in numbers[:1]):
+            status = "quote_not_found"
+        else:
+            claim_terms, quote_terms = set(tokens(claim)), set(tokens(quote))
+            overlap = len(claim_terms & quote_terms) / len(claim_terms) if claim_terms else 0.0
+            status = "verified_quote" if overlap >= MIN_OVERLAP else "off_point"
+        warning = ""
+        if status == "verified_quote" and any(c in _norm(sources[n - 1].text) for c in CUES):
+            warning = ("This passage mentions an argument or a rejected view. Read the quotation in context: "
+                       "it may not be the court's own holding.")
+        out.append(Statement(claim, n, quote, status, warning))
+    return out
 
 
 def answer_rag(index: Index, question: str, generator, k: int = 4,
@@ -129,27 +198,8 @@ def answer_rag(index: Index, question: str, generator, k: int = 4,
     reply = generator.complete(build_prompt(question, hits))
     if reply.strip().rstrip(".").upper() == "INSUFFICIENT":
         return RagAnswer("abstained", "The model found the retrieved passages insufficient.", hits)
-    cited, uncited, bad = check_citations(reply, len(hits))
-    return RagAnswer("rag", reply, hits, cited, uncited, bad)
-
-
-def annotate(text: str, sources: list[Chunk]) -> list[tuple[str, list[Chunk], str]]:
-    """Split an answer into sentences and attach the passages each one cites.
-
-    Status is "cited" (every number is valid), "invalid" (a number does not match a
-    retrieved passage) or "uncited" (no citation at all, so unverified).
-    """
-    rows = []
-    for sentence in re.split(r"(?<=[.;?!])\s+(?=[A-Z\[])", text.strip()):
-        if not sentence.strip():
-            continue
-        numbers = [int(n) for n in re.findall(r"\[(\d+)\]", sentence)]
-        valid = [sources[n - 1] for n in numbers if 1 <= n <= len(sources)]
-        if not numbers:
-            status = "uncited"
-        elif len(valid) < len(numbers):
-            status = "invalid"
-        else:
-            status = "cited"
-        rows.append((sentence, valid, status))
-    return rows
+    statements = parse_statements(reply, hits)
+    if not any(st.status == "verified_quote" for st in statements):
+        return RagAnswer("abstained", "The model gave no statement whose quotation could be found in a cited passage, "
+                         "so no answer is shown.", hits, statements)
+    return RagAnswer("rag", reply, hits, statements)

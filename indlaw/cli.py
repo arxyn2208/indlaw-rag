@@ -49,9 +49,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[{result.mode}]\n{result.text}")
             for n, chunk in enumerate(result.sources, start=1):
                 print(f"  [{n}] {chunk.title}, {chunk.label}")
-            if result.uncited_sentences or result.bad_citations:
-                print(f"  warning: {len(result.uncited_sentences)} uncited sentence(s), "
-                      f"invalid citation numbers {result.bad_citations}")
+            if result.removed:
+                print(f"  removed {len(result.removed)} statement(s) that failed the quotation check")
     else:
         print(json.dumps(evaluate(Index.load(args.index), load_gold(args.gold)), indent=2))
     return 0

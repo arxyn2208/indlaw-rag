@@ -104,7 +104,8 @@ def test_empty_folder_is_an_error(tmp_path):
 
 # ---- generation (uses a fake generator: no model is called) ----
 
-from indlaw.generate import answer_rag, build_prompt, check_citations
+from indlaw.generate import answer_rag, build_prompt, parse_statements
+from indlaw.text import Chunk
 
 
 class Fake:
@@ -122,15 +123,14 @@ def test_prompt_numbers_passages_and_restricts_sources(folder):
     assert "[1]" in prompt and "[2]" in prompt and "ONLY the numbered passages" in prompt
 
 
-def test_check_citations_flags_uncited_and_out_of_range():
-    cited, uncited, bad = check_citations("Detention was unlawful [1]. Compensation was paid to him [9]. The state appealed the decision later today.", 2)
-    assert cited == [1] and bad == [9] and uncited == ["The state appealed the decision later today."]
-
-
 def test_answer_rag_uses_generator_and_validates(folder):
-    fake = Fake("Detention beyond twenty four hours without a magistrate violates liberty [1].")
-    out = answer_rag(Index.from_folder(folder), "Is detention without producing the accused before a magistrate lawful?", fake)
-    assert out.mode == "rag" and out.cited == [1] and not out.uncited_sentences
+    q = "Is detention without producing the accused before a magistrate lawful?"
+    chunks = [c for c, _ in Index.from_folder(folder).search(q, k=4)]
+    words = chunks[0].text.split()[:8]
+    quote = " ".join(words)
+    fake = Fake(f'- {quote} was stated in the passage. [1] "{quote}"')
+    out = answer_rag(Index.from_folder(folder), q, fake)
+    assert out.mode == "rag" and len(out.shown) == 1 and out.shown[0].passage == 1
     assert "Passages:" in fake.prompt
 
 
@@ -167,14 +167,40 @@ def test_hybrid_search_fuses_lexical_and_dense(folder, monkeypatch):
         Index.from_folder(folder).search("x", mode="hybrid")
 
 
-def test_annotate_maps_citations_to_the_right_passage(folder):
-    from indlaw.generate import annotate
+PASSAGE = Chunk("d1", "Case A", "para 5", "The petitioner argued that delay entitles a prisoner to approach this Court. "
+                "The Court rejected that argument and held that only subsequent events after the verdict may be challenged.")
 
-    chunks = [c for c, _ in Index.from_folder(folder).search("detention magistrate compensation", k=3)]
-    rows = annotate("Compensation was awarded [2]. The state appealed the decision later today. See [7].", chunks)
-    assert rows[0][2] == "cited" and rows[0][1] == [chunks[1]]
-    assert rows[1][2] == "uncited"
-    assert rows[2][2] == "invalid"
+
+def _stmts(reply):
+    return {s.status: s for s in parse_statements(reply, [PASSAGE])}
+
+
+def test_statement_with_quote_from_the_cited_passage_is_shown_with_context_warning():
+    st = _stmts('- The Court rejected the argument about delay. [1] "The Court rejected that argument and held that only subsequent events"')
+    assert "verified_quote" in st
+    assert "rejected view" in st["verified_quote"].warning  # passage reports a rejected argument
+
+
+def test_regression_stretched_claim_with_invented_quote_is_removed():
+    # Known failure: a claim that goes beyond the passage, supported by words the passage does not contain.
+    st = _stmts('- A prisoner can always approach the court if rights are infringed. [1] "a prisoner may approach this Court whenever rights are infringed"')
+    assert "quote_not_found" in st and "verified_quote" not in st
+
+
+def test_regression_yes_claim_with_irrelevant_quote_is_removed():
+    st = _stmts('- Yes, complaints about prison conditions succeed always. [1] "The Court rejected that argument and held that only subsequent events"')
+    assert "off_point" in st
+
+
+def test_uncited_invalid_and_quoteless_statements_are_removed():
+    st = _stmts('- The state appealed the decision later today in court.\n- Compensation was awarded to him later. [7] "Compensation was awarded to him"\n- The Court held something about delay. [1]')
+    assert {"uncited", "invalid", "no_quote"} <= set(st)
+
+
+def test_answer_rag_abstains_when_no_statement_survives(folder):
+    out = answer_rag(Index.from_folder(folder), "Is detention without producing the accused before a magistrate lawful?",
+                     Fake("Detention without a magistrate is plainly unlawful in every case."))
+    assert out.mode == "abstained" and out.statements
 
 
 def test_chat_endpoint_retries_then_fails_cleanly(monkeypatch):
