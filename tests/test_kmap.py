@@ -53,7 +53,7 @@ def test_app_provision_map_view_on_fixture(tmp_path):
 
     (tmp_path / "a.txt").write_text("CASE TITLE: A v. B\n\n1. The court considered Article 21 of the Constitution of India.\n", encoding="utf-8")
     os.environ["INDLAW_CORPUS"] = str(tmp_path)
-    at = AppTest.from_file("app.py").run()
+    at = AppTest.from_file(os.path.join(os.path.dirname(__file__), "..", "app.py")).run()
     at.radio[0].set_value("Provision map").run()
     assert not at.exception
     assert any("1 mentions" in m.value for m in at.markdown)

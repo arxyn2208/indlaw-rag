@@ -255,12 +255,15 @@ def judge_statements(generator, question: str, statements: list, sources: list) 
 
 
 def answer_rag(index: Index, question: str, generator, k: int = 4,
-               min_coverage: float = RAG_MIN_COVERAGE, judge: bool = True) -> RagAnswer:
+               min_coverage: float = RAG_MIN_COVERAGE, judge: bool = True, expand=None) -> RagAnswer:
     found = [c for c, _ in index.search(question, k=k)]
     terms = set(tokens(question))
     if not found or max(coverage(terms, c) for c in found) < min_coverage:
         return RagAnswer("abstained", "The loaded judgments do not appear to cover this question.", found)
     hits = with_neighbours(index, found)
+    if expand is not None:
+        # GraphRAG: passages added through a literal provision mention, after the same refusal gate as RAG
+        hits = hits + expand(index, found, question)
     reply = generator.complete(build_prompt(question, hits))
     if reply.strip().rstrip(".").upper() == "INSUFFICIENT":
         return RagAnswer("abstained", "The model found the retrieved passages insufficient.", hits)

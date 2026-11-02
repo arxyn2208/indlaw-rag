@@ -6,6 +6,7 @@ import streamlit as st
 
 from indlaw.answer import answer
 from indlaw.generate import REASONS, GenerationError, answer_rag, generator_from_env
+from indlaw.graphrag import answer_llm_only, graph_expand
 from indlaw.guard import CappedGenerator, UsageGuard
 from indlaw.index import Index
 
@@ -83,7 +84,65 @@ def provision_map_tab() -> None:
                       for e in shown])
 
 
-view = st.radio("View", ["Ask", "Provision map"], horizontal=True)
+def compare_tab() -> None:
+    st.caption("Same question and same model in three modes. LLM only gets no passages. RAG gets the top search "
+               "passages. GraphRAG (experimental) gets the same passages plus a few from other cases that name the "
+               "same Article or Section, each tagged with the provision that linked it. None of this shows GraphRAG "
+               "is better. One comparison counts as 3 model uses, and each mode has its own deadline.")
+    if generator is None:
+        st.info("A language model is needed for this view and none is configured.")
+        return
+    q = st.text_input("Question to compare", key="compare_q")
+    if not q:
+        return
+    uses = st.session_state.get("model_uses", 0)
+    blocked = usage_guard().check(q, uses + 2)
+    if blocked:
+        st.info(f"{blocked} A comparison needs 3 model uses, so it was not run.")
+        return
+    for _ in range(3):
+        usage_guard().record()
+    st.session_state["model_uses"] = uses + 3
+    cols = st.columns(3)
+    budget = float(os.getenv("INDLAW_TIME_BUDGET", "60"))
+    with cols[0]:
+        st.subheader("LLM only")
+        st.warning("No sources given. Nothing here can be checked against a judgment, and it may invent cases.")
+        try:
+            with st.spinner("Asking the model with no passages..."):
+                st.write(answer_llm_only(q, CappedGenerator(generator, limit=1, time_budget=budget)))
+        except GenerationError as err:
+            st.warning(f"No answer in this mode ({err}).")
+    for col, name, expand in ((cols[1], "RAG", None), (cols[2], "GraphRAG (experimental)", graph_expand)):
+        with col:
+            st.subheader(name)
+            try:
+                with st.spinner("Generating from retrieved passages..."):
+                    rag = answer_rag(index, q, CappedGenerator(generator, time_budget=budget), min_coverage=min_cov,
+                                     expand=expand)
+            except GenerationError as err:
+                st.warning(f"No answer in this mode ({err}).")
+                continue
+            if rag.mode == "abstained":
+                st.warning(f"No answer: {rag.text}")
+            else:
+                for stmt in rag.shown:
+                    chunk = rag.sources[stmt.passage - 1]
+                    st.markdown(stmt.claim)
+                    st.markdown(f"> \"{stmt.quote}\"")
+                    st.markdown(f":green[Quote found word for word in {chunk.title}, {chunk.label}. "
+                                f"This does not prove the claim follows from it.]")
+            added = [c for c in rag.sources if "added through" in c.label]
+            with st.expander(f"Passages given to the model ({len(rag.sources)}" + (f", {len(added)} added by the graph)" if expand else ")")):
+                for n, c in enumerate(rag.sources, start=1):
+                    st.markdown(f"**[{n}] {c.title}, {c.label}**")
+                    st.write(c.text)
+
+
+view = st.radio("View", ["Ask", "Compare 3 modes", "Provision map"], horizontal=True)
+if view == "Compare 3 modes":
+    compare_tab()
+    st.stop()
 if view == "Provision map":
     provision_map_tab()
     st.stop()
