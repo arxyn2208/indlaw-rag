@@ -1,0 +1,43 @@
+from indlaw.kmap import build_map, find_provisions, to_dot
+from indlaw.text import make_chunks
+
+
+def test_finds_articles_and_sections_with_their_sentence():
+    text = ("Article 21 of the Constitution of India protects life. The accused was charged under "
+            "Section 302 of the Indian Penal Code, 1860. Section 41 CrPC was also cited.")
+    got = dict(find_provisions(text))
+    assert "Article 21" in got
+    assert "Section 302, Indian Penal Code, 1860" in got
+    assert "Section 41, CrPC" in got
+    assert got["Article 21"].startswith("Article 21 of")
+
+
+def test_no_mention_means_no_edge():
+    assert find_provisions("The Court held that the claim was allowed. Section alone is not a mention.") == []
+
+
+def test_edges_carry_paragraph_and_evidence_and_dot_is_valid():
+    raw = "Test v Case\n1. Facts.\n2. The petitioner relied on Article 14 of the Constitution.\n3. Held for the petitioner."
+    edges = build_map(make_chunks("t.txt", "Test v Case", raw))
+    assert len(edges) == 1
+    assert edges[0].label == "para 2" and "Article 14" in edges[0].evidence
+    dot = to_dot(edges)
+    assert dot.startswith("digraph") and "para 2" in dot
+
+
+def test_sample_corpus_has_no_provisions_so_map_is_empty():
+    import os
+
+    from indlaw.index import Index
+    folder = os.path.join(os.path.dirname(__file__), "..", "sample_corpus")
+    assert build_map(Index.from_folder(folder).chunks) == []
+
+
+def test_article_lists_give_one_mention_each():
+    got = [p for p, _ in find_provisions("Under Articles 14 , 19 and 21 of the Constitution the reasons must be rational.")]
+    assert got == ["Article 14", "Article 19", "Article 21"]
+
+
+def test_code_of_criminal_procedure_is_found():
+    got = [p for p, _ in find_provisions("She relied on Section 41 of the Code of Criminal Procedure, 1973.")]
+    assert got == ["Section 41, Code of Criminal Procedure, 1973"]

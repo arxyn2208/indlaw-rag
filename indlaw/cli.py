@@ -26,6 +26,9 @@ def main(argv: list[str] | None = None) -> int:
     e = sub.add_parser("eval", help="retrieval metrics against a gold set")
     e.add_argument("gold")
     e.add_argument("--index", default="index.json")
+    m = sub.add_parser("map", help="list the legal provisions each judgment mentions, with the paragraph and sentence")
+    m.add_argument("folder")
+    m.add_argument("--dot", help="also write Graphviz source to this file")
     args = p.parse_args(argv)
 
     if args.cmd == "build":
@@ -34,6 +37,16 @@ def main(argv: list[str] | None = None) -> int:
             idx.add_dense()
         idx.save(args.out)
         print(f"{len(idx.chunks)} chunks from {len({c.doc_id for c in idx.chunks})} documents -> {args.out}")
+    elif args.cmd == "map":
+        from .kmap import build_map, to_dot
+
+        edges = build_map(Index.from_folder(args.folder).chunks)
+        for e in edges:
+            print(f"{e.title} | {e.label} | {e.provision}\n    {e.evidence}")
+        print(f"{len(edges)} mentions found (pattern matches, not interpretation)")
+        if args.dot:
+            with open(args.dot, "w", encoding="utf-8") as f:
+                f.write(to_dot(edges))
     elif args.cmd == "ask":
         index = Index.load(args.index)
         generator = None if args.no_llm else generator_from_env()
